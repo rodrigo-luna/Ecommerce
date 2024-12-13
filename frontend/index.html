@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Carrinho de compras</title>
+</head>
+<body>
+    <main>
+        <div class="produtos">
+            <h2>Produtos</h2>
+            <div class="produto">
+                <span>Cerveja</span>
+                <span>R$8</span>
+                <input type="button" value="+" onclick="msg()">
+                <input type="button" value="-" onclick="msg()">
+            </div>
+            <div class="produto">
+                <span>Refrigerante</span>
+                <span>R$5</span>
+                <input type="button" value="+" onclick="msg()">
+                <input type="button" value="-" onclick="msg()">
+            </div>
+            <div class="produto">
+                <span>Água</span>
+                <span>R$3</span>
+                <input type="button" value="+" onclick="msg()">
+                <input type="button" value="-" onclick="msg()">
+            </div>
+            <div class="produto">
+                <span>Vinho</span>
+                <span>R$10</span>
+                <input type="button" value="+" onclick="msg()">
+                <input type="button" value="-" onclick="msg()">
+            </div>
+        </div>
+        <div class="carrinho">
+            <h2>Carrinho</h2>
+            <div>
+                <div class="item">
+                    <span class="nome">Cerveja</span>
+                    <span class="quantidade">1</span>
+                    <span class="valor-total">R$8</span>
+                    <input type="button" value="-" onclick="msg()">
+                </div>
+                <div class="item">
+                    <span class="nome">Refrigerante</span>
+                    <span class="quantidade">1</span>
+                    <span class="valor-total">R$5</span>
+                    <input type="button" value="-" onclick="msg()">
+                </div>
+                <div class="item">
+                    <span class="nome">Água</span>
+                    <span class="quantidade">1</span>
+                    <span class="valor-total">R$3</span>
+                    <input type="button" value="-" onclick="msg()">
+                </div>
+                <input type="button" value="Finalizar compra" class="comprar" onclick="">
+            </div>
+        </div>
+    </main>
+</body>
+</html>
