@@ -47,9 +47,11 @@ def callback(ch, method, properties, body):
         sleep(10)
         pedido = json.loads(message)
         pedido["estado"] = "pagamento aprovado"
+        # pedido["estado"] = "pagamento recusado"
         message = json.dumps(pedido)
 
         routing_key = "pagamentos.aprovados"
+        # routing_key = "pagamentos.recusados"
 
         signature = private_key.sign(
             message.encode(),

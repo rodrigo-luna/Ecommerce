@@ -67,7 +67,7 @@ def callback(ch, method, properties, body):
                 elif item["codigo"] == 222:
                     estoque[3]["disponivel"] += item["quantidade"]
 
-        print("Novo estoque:")
+        print("Estoque atualizado:")
         print(estoque)
 
     except Exception as e:

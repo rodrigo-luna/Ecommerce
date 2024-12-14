@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 # Carrega a chave pública do Principal
-with open("keys/principal_public_key.pem", "rb") as key_file:
+with open("keys/pagamento_public_key.pem", "rb") as key_file:
     public_key = serialization.load_pem_public_key(key_file.read())
 
 # Carrega a chave privada da Entrega
@@ -22,7 +22,7 @@ result = channel.queue_declare('', exclusive=True)
 queue_name = result.method.queue
 
 # Chaves de roteamento de interesse
-binding_keys = [ "pedidos.aprovados" ]
+binding_keys = [ "pagamentos.aprovados" ]
 for binding_key in binding_keys:
     channel.queue_bind(exchange='event_exchange', queue=queue_name, routing_key=binding_key)
 

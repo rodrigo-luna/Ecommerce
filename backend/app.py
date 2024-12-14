@@ -2,12 +2,17 @@
 from flask import Flask, request, jsonify
 import json
 import pika
+from threading import Thread
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 # Carrega a chave pública do Pagamento
 with open("keys/pagamento_public_key.pem", "rb") as key_file:
-    public_key = serialization.load_pem_public_key(key_file.read())
+    pagamento_public_key = serialization.load_pem_public_key(key_file.read())
+
+# Carrega a chave pública da Entrega
+with open("keys/entrega_public_key.pem", "rb") as key_file:
+    entrega_public_key = serialization.load_pem_public_key(key_file.read())
 
 # Carrega a chave privada do Principal
 with open("keys/principal_private_key.pem", "rb") as key_file:
@@ -105,28 +110,11 @@ def get_pedidos():
 
 def callback(ch, method, properties, body):
     try:
-        message, signature = body.decode().rsplit("||", 1)
-        signature = bytes.fromhex(signature)
-        public_key.verify(
-            signature,
-            message.encode(),
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH
-            ),
-            hashes.SHA256()
-        )
-        print(f" [x] Verified {method.routing_key}: {message}")
-        
         if method.routing_key == "pagamentos.aprovados":
-            pedido = json.loads(message)
-            pedido["estado"] = "pronto para envio"
-            pedidos[pedido["id"]-1]["estado"] = "pronto para envio"
-            message = json.dumps(pedido)
-
-            routing_key = "pedidos.aprovados"
-
-            signature = private_key.sign(
+            message, signature = body.decode().rsplit("||", 1)
+            signature = bytes.fromhex(signature)
+            pagamento_public_key.verify(
+                signature,
                 message.encode(),
                 padding.PSS(
                     mgf=padding.MGF1(hashes.SHA256()),
@@ -135,32 +123,52 @@ def callback(ch, method, properties, body):
                 hashes.SHA256()
             )
 
-            # Publica a mensagem no RabbitMQ
-            channel.basic_publish(
-                exchange='event_exchange',
-                routing_key=routing_key,
-                body=message + "||" + signature.hex()  # Anexa a assinatura no final da mensagem
+            pedido = json.loads(message)
+            pedidos[pedido["id"]-1]["estado"] = "pagamento aprovado"
+            print("Avisando o cliente que o pagamento foi aprovado")
+
+        elif method.routing_key == "pagamentos.recusados":
+            message, signature = body.decode().rsplit("||", 1)
+            signature = bytes.fromhex(signature)
+            pagamento_public_key.verify(
+                signature,
+                message.encode(),
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
             )
 
-            print(f" [x] Sent {routing_key}: {message} with signature")
-            connection.close()      
-
+            pedido = json.loads(message)
+            pedidos[pedido["id"]-1]["estado"] = "pagamento recusado"
+            print("Avisando o cliente que o pagamento foi recusado")
     
         elif method.routing_key == "pedidos.enviados":
+            message, signature = body.decode().rsplit("||", 1)
+            signature = bytes.fromhex(signature)
+            entrega_public_key.verify(
+                signature,
+                message.encode(),
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
+            )
+
             pedido = json.loads(message)
-            pedido["estado"] = "enviado"
             pedidos[pedido["id"]-1]["estado"] = "enviado"
+            print("Avisando o cliente que o pedido foi enviado")
+
+            
+        print(f" [x] Verified {method.routing_key}: {message}")
 
     except Exception as e:
         print(f" [!] Failed to verify message: {e}")
 
-
-@app.post("/pedidos")
-def add_pedido():
-    pedido = { "id": _find_next_id(), "estado": "esperando pagamento", "itens": carrinho.copy() }
-    pedidos.append(pedido)
-    carrinho.clear()
-        
+def acompanhar_pedido(pedido):
+    print("teste")
     # Define a chave de roteamento e a mensagem
     routing_key = 'pedidos.criados'
     message = json.dumps(pedido)
@@ -193,5 +201,15 @@ def add_pedido():
     channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
 
     channel.start_consuming()
+
+
+@app.post("/pedidos")
+def add_pedido():
+    pedido = { "id": _find_next_id(), "estado": "esperando pagamento", "itens": carrinho.copy() }
+    pedidos.append(pedido)
+    carrinho.clear()
+        
+    thread = Thread(target = acompanhar_pedido, args = (pedido,))
+    thread.start()
 
     return pedido, 201
