@@ -3,12 +3,11 @@ import json
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
-
 estoque = [
-    { "codigo": 123, "disponivel": 10, "valor":8 },
-    { "codigo": 456, "disponivel": 10, "valor":5 },
-    { "codigo": 789, "disponivel": 10, "valor":3 },
-    { "codigo": 222, "disponivel": 10, "valor":10 },
+    { "codigo": 123, "nome": "cerveja", "disponivel": 10, "valor":8 },
+    { "codigo": 456, "nome": "refrigerante", "disponivel": 10, "valor":5 },
+    { "codigo": 789, "nome": "água", "disponivel": 10, "valor":3 },
+    { "codigo": 222, "nome": "vinho", "disponivel": 10, "valor":10 },
 ]
 
 # Carrega a chave pública do Principal

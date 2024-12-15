@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Paytone+One&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Paytone+One&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
 
 * {
     box-sizing: border-box;
@@ -12,7 +12,9 @@ body {
     justify-content: center;
     min-height: 100dvh;
     background-color: rgb(240, 240, 215);
-    font-family: 'Ubuntu', 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-family: 'Poppins', 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: darkslategray;
+    font-weight: bold;
 }
 
 main {
@@ -39,8 +41,8 @@ h2 {
 
 .produtos .descricao {
     display: flex;
-    padding: 1rem 2rem 0 1.75rem;
-    gap: 3.25rem;
+    padding: 1rem 2rem 0 2.75rem;
+    gap: 5.15rem;
 }
 
 .produtos .produto {
@@ -60,8 +62,10 @@ h2 {
 
 .produto input {
     border-radius: 100%;
-    padding: .5rem .85rem;
+    height: 2.25rem;
+    width: 2.25rem;
     background-color: lightblue;
+    font-size: 1.5rem;
 }
 
 .carrinho .descricao {
@@ -81,24 +85,25 @@ h2 {
     padding: .5rem;
     margin-block: .5rem;
     border: 1px solid gray;
-    /* border-radius: .5rem; */
     background-color: white;
 
     text-align: center;
 }
 
-.item input {
-    border-radius: 100%;
-    padding: .5rem .85rem;
-    background-color: lightblue;
+#vazio {
+    display: block;
+    border: none;
 }
 
 .comprar {
     float: right;
 
     background-color: lightblue;
+    border: 2px solid darkslategray;
+    color: darkslategray;
     border-radius: 2rem;
     font-weight: bold;
+    font-size: 1rem;
 
     padding: .75rem;
 }

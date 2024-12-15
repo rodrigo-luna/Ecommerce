@@ -6,7 +6,6 @@ from flask_sse import sse
 from threading import Thread
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-from time import sleep
 
 # Carrega a chave pública do Pagamento
 with open("keys/pagamento_public_key.pem", "rb") as key_file:
@@ -47,7 +46,7 @@ pedidos = []
 
 
 # Conecta-se ao RabbitMQ
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=20))
 channel = connection.channel()
 channel.exchange_declare(exchange='event_exchange', exchange_type='topic')
 result = channel.queue_declare('', exclusive=True)
@@ -110,10 +109,8 @@ def put_produto(cod):
 @app.route('/eventos')
 def stream():
     def eventStream():
-        while True:
-            sleep(2)
-            if mensagens:
-                yield "data: " + mensagens.pop(0) + "\n\n"
+        if mensagens:
+            yield "data: " + mensagens.pop(0) + "\n\n"
     
     return Response(eventStream(), mimetype="text/event-stream")
 
@@ -149,7 +146,7 @@ def callback(ch, method, properties, body):
 
             pedido = json.loads(message)
             pedidos[pedido["id"]-1]["estado"] = "pagamento aprovado"
-            mensagens.append("O pagamento foi aprovado")
+            mensagens.append("[Pedido " + str(pedido["id"]) + "]: O pagamento foi aprovado")
 
         elif method.routing_key == "pagamentos.recusados":
             message, signature = body.decode().rsplit("||", 1)
@@ -166,7 +163,7 @@ def callback(ch, method, properties, body):
 
             pedido = json.loads(message)
             pedidos[pedido["id"]-1]["estado"] = "pagamento recusado"
-            mensagens.append("O pagamento foi recusado")
+            mensagens.append("[Pedido " + str(pedido["id"]) + "]: O pagamento foi recusado")
     
         elif method.routing_key == "pedidos.enviados":
             message, signature = body.decode().rsplit("||", 1)
@@ -183,7 +180,7 @@ def callback(ch, method, properties, body):
 
             pedido = json.loads(message)
             pedidos[pedido["id"]-1]["estado"] = "enviado"
-            mensagens.append("O pedido foi enviado")
+            mensagens.append("[Pedido " + str(pedido["id"]) + "]: O pedido foi enviado")
             channel.stop_consuming()
 
             
@@ -229,6 +226,8 @@ def add_pedido():
     pedido = { "id": _find_next_id(), "estado": "esperando pagamento", "itens": carrinho.copy() }
     pedidos.append(pedido)
     carrinho.clear()
+        
+    mensagens.append("[Pedido " + str(pedido["id"]) + "]: O pedido foi criado. Esperando pagamento.")
         
     thread = Thread(target = acompanhar_pedido, args = (pedido,))
     thread.start()
