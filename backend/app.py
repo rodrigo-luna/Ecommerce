@@ -1,10 +1,12 @@
 # app.py
-from flask import Flask, request, jsonify
+from flask import Flask, request, Response, jsonify
 import json
 import pika
+from flask_sse import sse
 from threading import Thread
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from time import sleep
 
 # Carrega a chave pública do Pagamento
 with open("keys/pagamento_public_key.pem", "rb") as key_file:
@@ -22,22 +24,27 @@ with open("keys/principal_private_key.pem", "rb") as key_file:
 )
 
 app = Flask(__name__)
+app.debug = True
+app.register_blueprint(sse, url_prefix='/stream')
+app.config["REDIS_URL"] = "redis://localhost"
 
-dados = [
-    { "codigo": 123, "nome": "cerveja", "valor": 5 },
-    { "codigo": 456, "nome": "refrigerante", "valor": 10 },
-    { "codigo": 789, "nome": "agua", "valor": 3 },
-    { "codigo": 222, "nome": "vinho", "valor": 15 },
-]
-
-# carrinho = []
-carrinho = [
-    { "codigo": 123, "quantidade": 1 },
-    { "codigo": 456, "quantidade": 1 },
-    { "codigo": 789, "quantidade": 1 },
-]
-
+mensagens = []
+carrinho = []
 pedidos = []
+
+# dados = [
+#     { "codigo": 123, "nome": "cerveja", "valor": 5 },
+#     { "codigo": 456, "nome": "refrigerante", "valor": 10 },
+#     { "codigo": 789, "nome": "agua", "valor": 3 },
+#     { "codigo": 222, "nome": "vinho", "valor": 15 },
+# ]
+
+# carrinho = [
+#     { "codigo": 123, "quantidade": 1 },
+#     { "codigo": 456, "quantidade": 1 },
+#     { "codigo": 789, "quantidade": 1 },
+# ]
+
 
 # Conecta-se ao RabbitMQ
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
@@ -65,10 +72,12 @@ def add_produto():
         return {"erro": "Erro no formato da requisição"}, 415
     
     produto = request.get_json()
+    produto["codigo"] = int(produto["codigo"])
+    produto["quantidade"] = int(produto["quantidade"])
     carrinho.append(produto)
     return produto, 201
 
-@app.route("/carrinho/<int:cod>/", methods= ["DELETE"])
+@app.route("/carrinho/<int:cod>", methods= ["DELETE"])
 def delete_produto(cod):
     index = get_produto_by_codigo(cod)
     if index == -1:
@@ -77,7 +86,7 @@ def delete_produto(cod):
     del carrinho[index]
     return {"sucesso": "Produto código [" + str(cod) + "] removido"}, 200
     
-@app.route("/carrinho/<int:cod>/", methods= ["PUT"])
+@app.route("/carrinho/<int:cod>", methods= ["PUT"])
 def put_produto(cod):
     if not request.is_json:
         return {"erro": "Erro no formato da requisição"}, 415
@@ -87,11 +96,26 @@ def put_produto(cod):
         return {"erro": "Produto código [" + str(cod) + "] não encontrado"}, 400
     
     produto = request.get_json()
+
+    if produto["quantidade"] == 0:
+        del carrinho[index]
+        return {"sucesso": "Produto código [" + str(cod) + "] removido"}, 200
+
     carrinho[index].update(produto)
     return carrinho[index], 200
 
 
 ##### PEDIDOS #####
+
+@app.route('/eventos')
+def stream():
+    def eventStream():
+        while True:
+            sleep(2)
+            if mensagens:
+                yield "data: " + mensagens.pop(0) + "\n\n"
+    
+    return Response(eventStream(), mimetype="text/event-stream")
 
 def _find_next_id():
     if len(pedidos) == 0:
@@ -125,7 +149,7 @@ def callback(ch, method, properties, body):
 
             pedido = json.loads(message)
             pedidos[pedido["id"]-1]["estado"] = "pagamento aprovado"
-            print("Avisando o cliente que o pagamento foi aprovado")
+            mensagens.append("O pagamento foi aprovado")
 
         elif method.routing_key == "pagamentos.recusados":
             message, signature = body.decode().rsplit("||", 1)
@@ -142,7 +166,7 @@ def callback(ch, method, properties, body):
 
             pedido = json.loads(message)
             pedidos[pedido["id"]-1]["estado"] = "pagamento recusado"
-            print("Avisando o cliente que o pagamento foi recusado")
+            mensagens.append("O pagamento foi recusado")
     
         elif method.routing_key == "pedidos.enviados":
             message, signature = body.decode().rsplit("||", 1)
@@ -159,7 +183,8 @@ def callback(ch, method, properties, body):
 
             pedido = json.loads(message)
             pedidos[pedido["id"]-1]["estado"] = "enviado"
-            print("Avisando o cliente que o pedido foi enviado")
+            mensagens.append("O pedido foi enviado")
+            channel.stop_consuming()
 
             
         print(f" [x] Verified {method.routing_key}: {message}")
@@ -168,7 +193,6 @@ def callback(ch, method, properties, body):
         print(f" [!] Failed to verify message: {e}")
 
 def acompanhar_pedido(pedido):
-    print("teste")
     # Define a chave de roteamento e a mensagem
     routing_key = 'pedidos.criados'
     message = json.dumps(pedido)
@@ -196,10 +220,7 @@ def acompanhar_pedido(pedido):
     for binding_key in binding_keys:
         channel.queue_bind(exchange='event_exchange', queue=queue_name, routing_key=binding_key)
 
-    print(' [*] Waiting for events. To exit press CTRL+C')
-
     channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
-
     channel.start_consuming()
 
 

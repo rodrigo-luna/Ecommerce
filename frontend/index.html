@@ -17,26 +17,26 @@
             <div class="produto">
                 <span>Cerveja</span>
                 <span>R$8</span>
-                <input type="button" value="+" onclick="msg()">
-                <input type="button" value="-" onclick="msg()">
+                <input type="button" value="+" onclick=cerveja(1)>
+                <input type="button" value="-" onclick=cerveja(-1)>
             </div>
             <div class="produto">
                 <span>Refrigerante</span>
                 <span>R$5</span>
-                <input type="button" value="+" onclick="msg()">
-                <input type="button" value="-" onclick="msg()">
+                <input type="button" value="+" onclick=refri(1)>
+                <input type="button" value="-" onclick=refri(-1)>
             </div>
             <div class="produto">
                 <span>Água</span>
                 <span>R$3</span>
-                <input type="button" value="+" onclick="msg()">
-                <input type="button" value="-" onclick="msg()">
+                <input type="button" value="+" onclick=agua(1)>
+                <input type="button" value="-" onclick=agua(-1)>
             </div>
             <div class="produto">
                 <span>Vinho</span>
                 <span>R$10</span>
-                <input type="button" value="+" onclick="msg()">
-                <input type="button" value="-" onclick="msg()">
+                <input type="button" value="+" onclick=vinho(1)>
+                <input type="button" value="-" onclick=vinho(-1)>
             </div>
         </div>
         <div class="carrinho">
@@ -47,27 +47,36 @@
                 <span>Total</span>
             </div>
             <div>
-                <div class="item">
+                <div class="item" id="cerveja">
                     <span class="nome">Cerveja</span>
-                    <span class="quantidade">1</span>
-                    <span class="valor-total">R$8</span>
-                    <input type="button" value="-" onclick="msg()">
+                    <span class="quantidade" id="qtd_cerveja">0</span>
+                    <span class="valor-total" id="val_cerveja">R$0</span>
                 </div>
-                <div class="item">
+                <div class="item" id="refri">
                     <span class="nome">Refrigerante</span>
-                    <span class="quantidade">1</span>
-                    <span class="valor-total">R$5</span>
-                    <input type="button" value="-" onclick="msg()">
+                    <span class="quantidade" id="qtd_refri">0</span>
+                    <span class="valor-total" id="val_refri">R$0</span>
                 </div>
-                <div class="item">
+                <div class="item" id="agua">
                     <span class="nome">Água</span>
-                    <span class="quantidade">1</span>
-                    <span class="valor-total">R$3</span>
-                    <input type="button" value="-" onclick="msg()">
+                    <span class="quantidade" id="qtd_agua">0</span>
+                    <span class="valor-total" id="val_agua">R$0</span>
                 </div>
-                <input type="button" value="Finalizar compra" class="comprar" onclick="">
+                <div class="item" id="vinho">
+                    <span class="nome">Vinho</span>
+                    <span class="quantidade" id="qtd_vinho">0</span>
+                    <span class="valor-total" id="val_vinho">R$0</span>
+                </div>
+                <input type="button" value="Finalizar compra" class="comprar" onclick=fazer_pedido()>
             </div>
         </div>
     </main>
+    <script src="script.js"></script>
 </body>
 </html>
+
+<!--
+cd C:\Program Files\Google\Chrome\Application
+chrome.exe --user-data-dir="C:/Chrome dev session" --disable-web-security
+-->
+ 

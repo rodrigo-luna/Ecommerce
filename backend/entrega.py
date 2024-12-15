@@ -2,6 +2,7 @@ import pika
 import json
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from time import sleep
 
 # Carrega a chave pública do Principal
 with open("keys/pagamento_public_key.pem", "rb") as key_file:
@@ -43,7 +44,7 @@ def callback(ch, method, properties, body):
         )
         print(f" [x] Verified {method.routing_key}: {message}")
 
-
+        sleep(10)
         pedido = json.loads(message)
         pedido["estado"] = "enviado"
         message = json.dumps(pedido)
