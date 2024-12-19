@@ -44,14 +44,14 @@ def callback(ch, method, properties, body):
         )
         print(f" [x] Verified {method.routing_key}: {message}")
 
-        sleep(10)
+        sleep(5)
         pedido = json.loads(message)
-        pedido["estado"] = "pagamento aprovado"
-        # pedido["estado"] = "pagamento recusado"
+        # pedido["estado"] = "pagamento aprovado"
+        pedido["estado"] = "pagamento recusado"
         message = json.dumps(pedido)
 
-        routing_key = "pagamentos.aprovados"
-        # routing_key = "pagamentos.recusados"
+        # routing_key = "pagamentos.aprovados"
+        routing_key = "pagamentos.recusados"
 
         signature = private_key.sign(
             message.encode(),

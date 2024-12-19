@@ -107,3 +107,7 @@ h2 {
 
     padding: .75rem;
 }
+
+input:active {
+    background-color: transparent;
+}

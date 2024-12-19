@@ -44,7 +44,7 @@ def callback(ch, method, properties, body):
         )
         print(f" [x] Verified {method.routing_key}: {message}")
 
-        sleep(10)
+        sleep(5)
         pedido = json.loads(message)
         pedido["estado"] = "enviado"
         message = json.dumps(pedido)

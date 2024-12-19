@@ -1,7 +1,15 @@
+# flask --app estoque run --host 127.0.0.1 --port 8000
+
 import pika
 import json
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from flask import Flask, jsonify, request
+from threading import Thread
+
+# Carrega a chave pública do Principal
+with open("keys/principal_public_key.pem", "rb") as key_file:
+    public_key = serialization.load_pem_public_key(key_file.read())
 
 estoque = [
     { "codigo": 123, "nome": "cerveja", "disponivel": 10, "valor":8 },
@@ -10,23 +18,18 @@ estoque = [
     { "codigo": 222, "nome": "vinho", "disponivel": 10, "valor":10 },
 ]
 
-# Carrega a chave pública do Principal
-with open("keys/principal_public_key.pem", "rb") as key_file:
-    public_key = serialization.load_pem_public_key(key_file.read())
+app = Flask(__name__)
 
-# Conecta-se ao RabbitMQ
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-channel = connection.channel()
-channel.exchange_declare(exchange='event_exchange', exchange_type='topic')
-result = channel.queue_declare('', exclusive=True)
-queue_name = result.method.queue
-
-# Chaves de roteamento de interesse
-binding_keys = [ "pedidos.criados", "pedidos.excluidos" ]
-for binding_key in binding_keys:
-    channel.queue_bind(exchange='event_exchange', queue=queue_name, routing_key=binding_key)
-
-print(' [*] Waiting for events. To exit press CTRL+C')
+@app.post("/estoque")
+def confere_estoque():
+    if not request.is_json:
+        return {"resposta": "erro", "descricao": "erro no formato da requisição"}, 415
+    
+    item = request.get_json()
+    for produto in estoque:
+        if item["codigo"] == produto["codigo"] and item["quantidade"] > produto["disponivel"]:
+            return {"resposta": "erro", "descricao": "produto fora de estoque"}
+    return {"resposta": "ok"}
 
 def callback(ch, method, properties, body):
     try:
@@ -72,16 +75,23 @@ def callback(ch, method, properties, body):
     except Exception as e:
         print(f" [!] Failed to verify message: {e}")
 
+def ouvir_pedidos():
+    # Conecta-se ao RabbitMQ
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+    channel.exchange_declare(exchange='event_exchange', exchange_type='topic')
+    result = channel.queue_declare('', exclusive=True)
+    queue_name = result.method.queue
 
-channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+    # Chaves de roteamento de interesse
+    binding_keys = [ "pedidos.criados", "pedidos.excluidos" ]
+    for binding_key in binding_keys:
+        channel.queue_bind(exchange='event_exchange', queue=queue_name, routing_key=binding_key)
 
-channel.start_consuming()
+    print(' [*] Waiting for events. To exit press CTRL+C')
 
+    channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+    channel.start_consuming()
 
-
-# estoque = [
-#     { "codigo": 123, "disponivel": 10, "nome": "cerveja" },
-#     { "codigo": 456, "disponivel": 10, "nome": "refrigerante" },
-#     { "codigo": 789, "disponivel": 10, "nome": "agua" },
-#     { "codigo": 222, "disponivel": 10, "nome": "vinho" },
-# ]
+thread = Thread(target = ouvir_pedidos)
+thread.start()

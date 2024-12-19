@@ -1,5 +1,5 @@
-# app.py
 from flask import Flask, request, Response, jsonify
+import requests
 import json
 import pika
 from flask_sse import sse
@@ -23,7 +23,6 @@ with open("keys/principal_private_key.pem", "rb") as key_file:
 )
 
 app = Flask(__name__)
-app.debug = True
 app.register_blueprint(sse, url_prefix='/stream')
 app.config["REDIS_URL"] = "redis://localhost"
 
@@ -31,22 +30,8 @@ mensagens = []
 carrinho = []
 pedidos = []
 
-# dados = [
-#     { "codigo": 123, "nome": "cerveja", "valor": 5 },
-#     { "codigo": 456, "nome": "refrigerante", "valor": 10 },
-#     { "codigo": 789, "nome": "agua", "valor": 3 },
-#     { "codigo": 222, "nome": "vinho", "valor": 15 },
-# ]
-
-# carrinho = [
-#     { "codigo": 123, "quantidade": 1 },
-#     { "codigo": 456, "quantidade": 1 },
-#     { "codigo": 789, "quantidade": 1 },
-# ]
-
-
 # Conecta-se ao RabbitMQ
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=20))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=0))
 channel = connection.channel()
 channel.exchange_declare(exchange='event_exchange', exchange_type='topic')
 result = channel.queue_declare('', exclusive=True)
@@ -164,7 +149,30 @@ def callback(ch, method, properties, body):
             pedido = json.loads(message)
             pedidos[pedido["id"]-1]["estado"] = "pagamento recusado"
             mensagens.append("[Pedido " + str(pedido["id"]) + "]: O pagamento foi recusado")
-    
+
+            routing_key = 'pedidos.excluidos'
+            message = json.dumps(pedido)
+
+            signature = private_key.sign(
+                message.encode(),
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
+            )
+
+            # Publica a mensagem no RabbitMQ
+            channel.basic_publish(
+                exchange='event_exchange',
+                routing_key=routing_key,
+                body=message + "||" + signature.hex()  # Anexa a assinatura no final da mensagem
+            )
+
+            print(f" [x] Sent {routing_key}: {message} with signature")
+            channel.stop_consuming()
+
+
         elif method.routing_key == "pedidos.enviados":
             message, signature = body.decode().rsplit("||", 1)
             signature = bytes.fromhex(signature)
@@ -190,7 +198,6 @@ def callback(ch, method, properties, body):
         print(f" [!] Failed to verify message: {e}")
 
 def acompanhar_pedido(pedido):
-    # Define a chave de roteamento e a mensagem
     routing_key = 'pedidos.criados'
     message = json.dumps(pedido)
 
@@ -223,6 +230,16 @@ def acompanhar_pedido(pedido):
 
 @app.post("/pedidos")
 def add_pedido():
+    for item in carrinho:
+        print (item)
+        res = requests.post("http://127.0.0.1:8000/estoque", data = json.dumps(item), headers={"Content-Type": "application/json"})
+        r = res.json()
+        if r["resposta"] == "ok":
+            print ("Estoque ok")
+        else:
+            carrinho.clear()
+            return {"erro": r["descricao"]}, 200
+
     pedido = { "id": _find_next_id(), "estado": "esperando pagamento", "itens": carrinho.copy() }
     pedidos.append(pedido)
     carrinho.clear()
